@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   appendToDocumentAction,
@@ -31,6 +32,7 @@ export function GenerateNoteForm({
     isAppendMode ? appendToDocumentAction : generateDocumentAction,
     initialActionState,
   );
+  const canUseDOM = typeof window !== "undefined";
 
   useEffect(() => {
     if (!isConfirmOpen) {
@@ -52,6 +54,66 @@ export function GenerateNoteForm({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isConfirmOpen]);
+
+  const confirmDialog =
+    currentDocument && isConfirmOpen && canUseDOM
+      ? createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 sm:px-6">
+            <button
+              aria-label="Zamknij potwierdzenie"
+              className="fixed inset-0 bg-[#11232b]/55"
+              onClick={() => setIsConfirmOpen(false)}
+              type="button"
+            />
+
+            <div
+              aria-describedby="new-note-confirmation-description"
+              aria-labelledby="new-note-confirmation-title"
+              aria-modal="true"
+              className="relative z-10 w-full max-w-md overflow-y-auto rounded-[28px] border border-border bg-[#f8f5ef] p-6 shadow-2xl max-h-[calc(100dvh-3rem)]"
+              role="dialog"
+            >
+              <p
+                className="text-xs font-semibold uppercase tracking-[0.16em] text-accent"
+                id="new-note-confirmation-title"
+              >
+                Potwierdzenie
+              </p>
+              <h3 className="mt-3 font-serif text-2xl leading-tight text-foreground">
+                Usunąć bieżącą notatkę?
+              </h3>
+              <p
+                className="mt-3 text-sm leading-7 text-muted"
+                id="new-note-confirmation-description"
+              >
+                Po potwierdzeniu aktywny dokument zostanie usunięty, a widok wróci do
+                formularza tworzenia nowej notatki.
+              </p>
+
+              <form action={deleteDocumentAction} className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <input name="id" type="hidden" value={currentDocument.id} />
+                <Button
+                  className="flex-1 justify-center"
+                  onClick={() => setIsConfirmOpen(false)}
+                  type="button"
+                  variant="ghost"
+                >
+                  Anuluj
+                </Button>
+                <SubmitButton
+                  className="flex-1 justify-center"
+                  pendingLabel="Usuwanie..."
+                  type="submit"
+                  variant="danger"
+                >
+                  Usuń i zacznij nową
+                </SubmitButton>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,61 +176,7 @@ export function GenerateNoteForm({
           >
             Nowa notatka
           </Button>
-          {isConfirmOpen ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
-              <button
-                aria-label="Zamknij potwierdzenie"
-                className="absolute inset-0 bg-[#11232b]/55"
-                onClick={() => setIsConfirmOpen(false)}
-                type="button"
-              />
-
-              <div
-                aria-describedby="new-note-confirmation-description"
-                aria-labelledby="new-note-confirmation-title"
-                aria-modal="true"
-                className="relative z-10 w-full max-w-md rounded-[28px] border border-border bg-[#f8f5ef] p-6 shadow-2xl"
-                role="dialog"
-              >
-                <p
-                  className="text-xs font-semibold uppercase tracking-[0.16em] text-accent"
-                  id="new-note-confirmation-title"
-                >
-                  Potwierdzenie
-                </p>
-                <h3 className="mt-3 font-serif text-2xl leading-tight text-foreground">
-                  Usunąć bieżącą notatkę?
-                </h3>
-                <p
-                  className="mt-3 text-sm leading-7 text-muted"
-                  id="new-note-confirmation-description"
-                >
-                  Po potwierdzeniu aktywny dokument zostanie usunięty, a widok wróci do
-                  formularza tworzenia nowej notatki.
-                </p>
-
-                <form action={deleteDocumentAction} className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <input name="id" type="hidden" value={currentDocument.id} />
-                  <Button
-                    className="flex-1 justify-center"
-                    onClick={() => setIsConfirmOpen(false)}
-                    type="button"
-                    variant="ghost"
-                  >
-                    Anuluj
-                  </Button>
-                  <SubmitButton
-                    className="flex-1 justify-center"
-                    pendingLabel="Usuwanie..."
-                    type="submit"
-                    variant="danger"
-                  >
-                    Usuń i zacznij nową
-                  </SubmitButton>
-                </form>
-              </div>
-            </div>
-          ) : null}
+          {confirmDialog}
         </>
       ) : null}
     </div>

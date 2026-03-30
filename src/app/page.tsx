@@ -131,6 +131,9 @@ export default async function Home() {
                   ? "Nowe informacje zostaną dopisane do aktywnej notatki i przeliczone razem z dotychczasową treścią."
                   : "Wynik zawiera sekcje: wywiad, choroby i operacje, alergie, wywiad rodzinny, badanie, rozpoznanie, zalecenia i kod recepty."}
               </CardDescription>
+              <p className="rounded-3xl border border-border bg-white/65 px-4 py-3 text-sm leading-6 text-muted">
+                Aplikacja przechowuje tylko ostatnią aktywną notatkę. Można mieć wygenerowaną tylko jedną notatkę naraz, a utworzenie nowej usuwa poprzednią.
+              </p>
             </div>
             <GenerateNoteForm
               key={document?.id ?? "new-document"}

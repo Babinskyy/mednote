@@ -326,6 +326,8 @@ Cel redakcyjny:
 - Zachowaj pełną zgodność znaczeniową z notatką źródłową.
 - Usuń chaos składniowy i zmień kolejność informacji tak, aby dokumentacja była czytelna.
 - Każdą sekcję zapisz jako krótki, spójny akapit, z wyjątkiem zaleceń, które mogą być zapisane jako krótkie osobne punkty w jednym stringu, jeśli wynika to wprost z notatki.
+- Jeśli w jednej sekcji występuje kilka odrębnych informacji, oddzielaj je nową linią zamiast łączyć w jeden długi ciąg tekstu.
+- Dbaj o czytelny układ wewnątrz stringów: używaj nowych linii tam, gdzie poprawia to odbiór dokumentu, zwłaszcza przy wyliczeniach, negacjach, wielu objawach lub wielu zaleceniach.
 - Pisz po polsku, stylem formalnym, rzeczowym i medycznym.
 
 Zasady interpretacji treści:
@@ -382,6 +384,7 @@ Wymagania dla sekcji:
 7. Zalecenia
 - Wpisuj tylko zalecenia zapisane w notatce.
 - Redaguj je pełnym, formalnym zdaniem lub krótkimi punktami w jednym stringu, jeśli taka forma będzie czytelniejsza i nadal ściśle odpowiada notatce.
+- Jeśli zaleceń jest kilka, każde zapisz w osobnym wierszu.
 - Przykład:
   „zal odpoczynek i nawodnienie” → „Zalecono odpoczynek i nawodnienie.”
 
@@ -392,6 +395,7 @@ Wymagania dla sekcji:
 Dodatkowe reguły formatu:
 - Zwróć wyłącznie JSON z polami "expandedNote" i "sections".
 - W polu "expandedNote" zapisz jedną uporządkowaną, logiczną wersję notatki źródłowej po rozwinięciu wyłącznie tych skrótów, których znaczenie jest dostatecznie pewne w kontekście.
+- W polu "expandedNote" także stosuj nowe linie, jeśli notatka zawiera kilka wyraźnie odrębnych bloków informacji.
 - Każda wartość ma być stringiem.
 - Dla brakującej sekcji zwróć pusty string: "".
 - Nie dodawaj żadnych komentarzy, wyjaśnień, nagłówków ani tekstu poza JSON.
@@ -406,7 +410,12 @@ Jeżeli nie da się czegoś przypisać jednoznacznie do sekcji, zachowaj ostroż
       },
       {
         role: "user",
-        content: `Uporządkuj notatkę do sekcji: wywiad, choroby i operacje, alergie, wywiad rodzinny, badanie, rozpoznanie (opcjonalnie), zalecenia wypunktowane jeśli to możliwe i kod recepty (jeśli obecny). Każdą sekcję zapisz jako sformalizowany fragment dokumentacji medycznej, a nie jako surowe hasła.
+        content: `Uporządkuj notatkę do sekcji: wywiad, choroby i operacje, alergie, wywiad rodzinny, badanie, rozpoznanie (opcjonalnie), zalecenia i kod recepty (jeśli obecny). Każdą sekcję zapisz jako sformalizowany fragment dokumentacji medycznej, a nie jako surowe hasła.
+
+      Zadbaj o czytelne formatowanie wewnątrz stringów JSON:
+      - stosuj nowe linie między odrębnymi informacjami zamiast jednego długiego ciągu tekstu,
+      - w zaleceniach wpisuj każde zalecenie w osobnym wierszu, jeśli jest ich kilka,
+      - jeżeli w sekcji są negacje lub kilka ważnych elementów wywiadu albo badania, możesz rozdzielić je na osobne linie dla czytelności.
 
 Prywatne skróty użytkownika:
 ${formatAbbreviationsForPrompt(abbreviations)}
@@ -416,7 +425,7 @@ Notatka:
 ${note}`,
       },
     ],
-    response_format: zodResponseFormat(openAiSectionsSchema, "mednote_sections"),
+    response_format: zodResponseFormat(openAiSectionsSchema, "sections"),
   });
 
   return completion.choices[0]?.message.parsed ?? null;
@@ -443,7 +452,7 @@ async function generateSuggestionsWithOpenAi(sections: VisitSections) {
         content: `Oceń tę kartę wizyty i zwróć wyłącznie sugestie doprecyzowania:\n\n${formatSectionsForPrompt(sections)}`,
       },
     ],
-    response_format: zodResponseFormat(openAiSuggestionsSchema, "mednote_suggestions"),
+    response_format: zodResponseFormat(openAiSuggestionsSchema, "suggestions"),
   });
 
   return completion.choices[0]?.message.parsed?.suggestions ?? null;

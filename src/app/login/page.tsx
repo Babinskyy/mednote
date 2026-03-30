@@ -23,7 +23,7 @@ export default async function LoginPage() {
       <Card className="grid-wash animate-rise-in w-full max-w-5xl overflow-hidden p-0 md:grid md:grid-cols-[0.95fr_1.05fr]">
         <div className="flex min-h-full flex-col bg-[#0f766e] px-8 py-10 text-accent-foreground md:px-10">
           <div>
-            <Badge className="bg-white/15 text-white">Mednote MVP</Badge>
+            <Badge className="bg-white/15 text-white">Przychodzi Baba Do Lekarza</Badge>
           </div>
           <div className="flex flex-1 items-center">
             <h1 className="font-serif text-4xl leading-tight tracking-[-0.03em] md:text-5xl">

@@ -1,4 +1,4 @@
-# Mednote: konfiguracja dla developera
+# Przychodzi Baba Do Lekarza: konfiguracja dla developera
 
 ## 1. Wymagania lokalne
 
@@ -42,6 +42,12 @@ To utworzy:
 - tabelę `abbreviations` z prywatnym słownikiem skrótów per użytkownik,
 - tabelę `medical_documents` przechowującą tylko bieżący dokument użytkownika,
 - polityki RLS ograniczające dostęp do własnych danych.
+
+Ważne ograniczenie MVP:
+
+- aplikacja przechowuje tylko ostatnią notatkę użytkownika,
+- w danym momencie można mieć tylko jeden aktywny dokument,
+- wygenerowanie nowej notatki usuwa poprzedni dokument tego użytkownika.
 
 ### Konta lekarzy i operacje administracyjne
 

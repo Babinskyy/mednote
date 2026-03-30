@@ -1,6 +1,6 @@
-# Mednote
+# Przychodzi Baba Do Lekarza
 
-Mednote to MVP aplikacji dla lekarzy POZ, która zamienia krótką notatkę z wizyty na czytelną kartę wizyty z oddzieloną listą braków i sugestii.
+Przychodzi Baba Do Lekarza to MVP aplikacji dla lekarzy POZ, która zamienia krótką notatkę z wizyty na czytelną kartę wizyty z oddzieloną listą braków i sugestii.
 
 ## Stack
 

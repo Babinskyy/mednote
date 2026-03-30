@@ -21,7 +21,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mednote",
+  title: "Przychodzi Baba Do Lekarza",
   description: "Generator dokumentacji medycznej.",
 };
 
