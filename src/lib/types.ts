@@ -1,8 +1,12 @@
 export type VisitSections = {
   interview: string;
+  conditionsAndOperations: string;
+  allergies: string;
+  familyHistory: string;
   examination: string;
   diagnosis: string;
   recommendations: string;
+  prescriptionCode: string;
 };
 
 export type GeneratedDocumentPayload = {

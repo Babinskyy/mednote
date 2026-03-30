@@ -12,12 +12,12 @@ export function AddAbbreviationForm() {
   const [state, action] = useActionState(addAbbreviationAction, initialActionState);
 
   return (
-    <form action={action} className="grid gap-4 rounded-[24px] border border-border bg-white/70 p-5 md:grid-cols-[0.7fr_1.3fr_auto] md:items-end">
+    <form action={action} className="grid gap-4 rounded-3xl border border-border bg-white/70 p-5 md:grid-cols-[0.7fr_1.3fr_auto] md:items-end">
       <div className="flex flex-col gap-2">
         <label className="text-sm font-semibold text-foreground" htmlFor="shortcut">
           Skrót
         </label>
-        <Input id="shortcut" name="shortcut" placeholder="bp" />
+        <Input id="shortcut" name="shortcut" placeholder="bp lub ból w klp" />
         <FormMessage message={state.fieldErrors?.shortcut?.[0]} tone="error" />
       </div>
 

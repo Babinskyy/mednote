@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+function collapseWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 export const loginSchema = z.object({
   email: z.string().trim().email("Podaj poprawny adres e-mail."),
   password: z.string().min(1, "Hasło jest wymagane."),
@@ -11,16 +15,22 @@ export const abbreviationSchema = z.object({
     .trim()
     .min(1, "Skrót jest wymagany.")
     .max(80, "Skrót jest zbyt długi.")
-    .regex(/^\S+$/, "Skrót nie może zawierać spacji."),
+    .transform(collapseWhitespace),
   expansion: z
     .string()
     .trim()
     .min(1, "Rozwinięcie jest wymagane.")
-    .max(300, "Rozwinięcie jest zbyt długie."),
+    .max(300, "Rozwinięcie jest zbyt długie.")
+    .transform(collapseWhitespace),
 });
 
 export const noteSchema = z.object({
   note: z.string().trim().min(1, "Wpisz notatkę z wizyty."),
+});
+
+export const appendNoteSchema = z.object({
+  id: z.string().uuid("Nieprawidłowy identyfikator zasobu."),
+  note: z.string().trim().min(1, "Wpisz informacje do dopisania."),
 });
 
 export const deleteByIdSchema = z.object({
@@ -30,9 +40,13 @@ export const deleteByIdSchema = z.object({
 export const generatedDocumentSchema = z.object({
   sections: z.object({
     interview: z.string(),
+    conditionsAndOperations: z.string(),
+    allergies: z.string(),
+    familyHistory: z.string(),
     examination: z.string(),
     diagnosis: z.string(),
     recommendations: z.string(),
+    prescriptionCode: z.string(),
   }),
   suggestions: z.array(z.string().trim().min(1)).max(10),
 });

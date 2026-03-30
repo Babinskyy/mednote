@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { deleteDocumentAction } from "@/app/actions/documents";
 import { logoutAction } from "@/app/actions/auth";
 import { CopyDocumentButton } from "@/components/dashboard/copy-document-button";
 import { SetupCard } from "@/components/dashboard/setup-card";
@@ -22,9 +21,13 @@ import { requireUser } from "@/lib/auth";
 
 const sectionLabels = {
   interview: "Wywiad",
+  conditionsAndOperations: "Choroby i operacje",
+  allergies: "Alergie",
+  familyHistory: "Wywiad rodzinny",
   examination: "Badanie",
   diagnosis: "Rozpoznanie",
   recommendations: "Zalecenia",
+  prescriptionCode: "Kod recepty",
 } as const;
 
 export default async function Home() {
@@ -50,7 +53,7 @@ export default async function Home() {
             <div className="space-y-5">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="bg-white/12">
-                  Generator dokumentacji POZ
+                  Generator dokumentacji medycznej
                 </Badge>
                 {!hasOpenAIConfig() ? (
                   <Badge className="bg-[#f4b942]/20 text-[#f9d98c]">
@@ -60,12 +63,12 @@ export default async function Home() {
               </div>
               <div className="space-y-3">
                 <h1 className="max-w-3xl font-serif text-4xl leading-tight tracking-[-0.03em] md:text-5xl">
-                  Uporządkuj notatkę lekarza do gotowej karty wizyty, bez
-                  mieszania sugestii z dokumentacją.
+                  Uporządkuj notatkę lekarza do gotowej karty wizyty.
                 </h1>
                 <p className="max-w-2xl text-base leading-7">
                   Aplikacja rozwija prywatne skróty, może porządkować oczywiste
-                  skróty z kontekstu i oddziela listę braków od wyniku do schowka.
+                  skróty z kontekstu i oddziela listę braków od wyniku do
+                  schowka.
                 </p>
               </div>
             </div>
@@ -105,7 +108,7 @@ export default async function Home() {
                   </Button>
                 </Link>
                 <form action={logoutAction}>
-                  <Button size="sm" variant="ghost">
+                  <Button size="sm" type="submit" variant="ghost">
                     Wyloguj
                   </Button>
                 </form>
@@ -120,15 +123,20 @@ export default async function Home() {
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
                 Generacja
               </p>
-              <CardTitle>Wpisz notatkę z wizyty</CardTitle>
+              <CardTitle>
+                {document ? "Uzupełnij bieżącą notatkę" : "Wpisz notatkę z wizyty"}
+              </CardTitle>
               <CardDescription className="text-base leading-7">
-                Wynik zawiera zawsze sekcje: wywiad, badanie, rozpoznanie i
-                zalecenia. Sugestie braków są osobno.
+                {document
+                  ? "Nowe informacje zostaną dopisane do aktywnej notatki i przeliczone razem z dotychczasową treścią."
+                  : "Wynik zawiera sekcje: wywiad, choroby i operacje, alergie, wywiad rodzinny, badanie, rozpoznanie, zalecenia i kod recepty."}
               </CardDescription>
             </div>
             <GenerateNoteForm
+              key={document?.id ?? "new-document"}
               abbreviationCount={abbreviations.length}
               aiEnabled={hasOpenAIConfig()}
+              currentDocument={document}
             />
           </Card>
 
@@ -140,8 +148,7 @@ export default async function Home() {
                 </p>
                 <CardTitle>Gotowa karta wizyty</CardTitle>
                 <CardDescription className="max-w-xl text-base leading-7">
-                  Przed użyciem zweryfikuj treść. System nie powinien dopisywać
-                  nowych informacji klinicznych.
+                  Przed użyciem zweryfikuj treść.
                 </CardDescription>
               </div>
               {document ? <CopyDocumentButton content={clipboardText} /> : null}
@@ -149,8 +156,7 @@ export default async function Home() {
 
             {!document ? (
               <div className="rounded-[28px] border border-dashed border-border bg-white/60 px-6 py-10 text-sm leading-7 text-muted">
-                Po wygenerowaniu dokument pojawi się tutaj. Kopiowanie obejmie
-                tylko część dokumentacyjną, bez sugestii.
+                Po wygenerowaniu dokument pojawi się tutaj.
               </div>
             ) : (
               <>
@@ -166,7 +172,7 @@ export default async function Home() {
                     >
                   ).map((key) => (
                     <section
-                      className="rounded-[24px] border border-border bg-white/75 p-5"
+                      className="rounded-3xl border border-border bg-white/75 p-5"
                       key={key}
                     >
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-accent">
@@ -179,29 +185,18 @@ export default async function Home() {
                   ))}
                 </div>
 
-                <section className="rounded-[28px] border border-[#e7a62b]/25 bg-[#fff7e7] p-5">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#9b6a0e]">
-                    Sugestie braków
-                  </p>
-                  {document.suggestions.length ? (
+                {document.suggestions.length ? (
+                  <section className="rounded-[28px] border border-[#e7a62b]/25 bg-[#fff7e7] p-5">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#9b6a0e]">
+                      Sugestie
+                    </p>
                     <ul className="space-y-2 text-sm leading-7 text-foreground">
                       {document.suggestions.map((suggestion) => (
                         <li key={suggestion}>• {suggestion}</li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-sm leading-7 text-muted">
-                      Brak dodatkowych sugestii.
-                    </p>
-                  )}
-                </section>
-
-                <form action={deleteDocumentAction}>
-                  <input name="id" type="hidden" value={document.id} />
-                  <Button type="submit" variant="danger">
-                    Usuń dokument
-                  </Button>
-                </form>
+                  </section>
+                ) : null}
               </>
             )}
           </Card>

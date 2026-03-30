@@ -2,9 +2,13 @@ import type { VisitSections } from "@/lib/types";
 
 const labels: Record<keyof VisitSections, string> = {
   interview: "Wywiad",
+  conditionsAndOperations: "Choroby i operacje",
+  allergies: "Alergie",
+  familyHistory: "Wywiad rodzinny",
   examination: "Badanie",
   diagnosis: "Rozpoznanie",
   recommendations: "Zalecenia",
+  prescriptionCode: "Kod recepty",
 };
 
 export function formatSectionValue(value: string) {

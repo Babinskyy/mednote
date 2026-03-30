@@ -22,7 +22,7 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "Mednote",
-  description: "Generator dokumentacji POZ dla lekarzy pilotażowych.",
+  description: "Generator dokumentacji medycznej.",
 };
 
 export default function RootLayout({
@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html
       lang="pl"
-      className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}
+      className={`${sans.variable} ${serif.variable} ${mono.variable} antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

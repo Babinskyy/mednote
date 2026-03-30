@@ -1,37 +1,33 @@
 import type { AbbreviationRecord } from "@/lib/types";
 
-const tokenPattern = /^([^\p{L}\p{N}]*)((?:[\p{L}\p{N}][\p{L}\p{N}_/-]*))([^\p{L}\p{N}]*)$/u;
+const shortcutBoundaryPattern = String.raw`[\p{L}\p{N}_/\-]`;
+
+function escapeForRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildShortcutPattern(shortcut: string) {
+  const escapedShortcut = escapeForRegex(shortcut.trim()).replace(/\s+/g, String.raw`\s+`);
+
+  return new RegExp(
+    `(?<!${shortcutBoundaryPattern})${escapedShortcut}(?!${shortcutBoundaryPattern})`,
+    "gu",
+  );
+}
 
 export function expandAbbreviations(note: string, abbreviations: Pick<AbbreviationRecord, "shortcut" | "expansion">[]) {
   if (!abbreviations.length) {
     return note;
   }
 
-  const dictionary = new Map(
-    abbreviations.map((entry) => [entry.shortcut, entry.expansion]),
-  );
-
-  return note
-    .split(/(\s+)/)
-    .map((chunk) => {
-      if (!chunk.trim()) {
-        return chunk;
-      }
-
-      const match = chunk.match(tokenPattern);
-
-      if (!match) {
-        return dictionary.get(chunk) ?? chunk;
-      }
-
-      const [, prefix, core, suffix] = match;
-      const expansion = dictionary.get(core);
-
-      if (!expansion) {
-        return chunk;
-      }
-
-      return `${prefix}${expansion}${suffix}`;
-    })
-    .join("");
+  return [...abbreviations]
+    .map(({ shortcut, expansion }) => ({
+      shortcut: shortcut.trim(),
+      expansion: expansion.trim(),
+    }))
+    .filter(({ shortcut, expansion }) => Boolean(shortcut) && Boolean(expansion))
+    .sort((left, right) => right.shortcut.length - left.shortcut.length)
+    .reduce((expandedNote, { shortcut, expansion }) => {
+      return expandedNote.replace(buildShortcutPattern(shortcut), expansion);
+    }, note);
 }
