@@ -104,7 +104,7 @@ export default async function Home() {
               <div className="flex flex-wrap gap-3">
                 <Link className="inline-flex" href="/settings">
                   <Button size="sm" variant="secondary">
-                    Ustawienia skrótów
+                    Ustawienia
                   </Button>
                 </Link>
                 <form action={logoutAction}>

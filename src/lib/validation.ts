@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { promptTemplateTokens } from "@/lib/prompt-templates";
+
 function collapseWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -50,6 +52,45 @@ export const generatedDocumentSchema = z.object({
   }),
   suggestions: z.array(z.string().trim().min(1)).max(10),
 });
+
+const promptTemplateSchema = z
+  .string()
+  .trim()
+  .min(1, "Pole jest wymagane.")
+  .max(25_000, "Treść promptu jest zbyt długa.");
+
+export const userPromptTemplatesSchema = z
+  .object({
+    sectionsSystemPrompt: promptTemplateSchema,
+    sectionsUserPrompt: promptTemplateSchema,
+    suggestionsSystemPrompt: promptTemplateSchema,
+    suggestionsUserPrompt: promptTemplateSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (!value.sectionsUserPrompt.includes(promptTemplateTokens.abbreviations)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sectionsUserPrompt"],
+        message: `Prompt musi zawierać placeholder ${promptTemplateTokens.abbreviations}.`,
+      });
+    }
+
+    if (!value.sectionsUserPrompt.includes(promptTemplateTokens.note)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sectionsUserPrompt"],
+        message: `Prompt musi zawierać placeholder ${promptTemplateTokens.note}.`,
+      });
+    }
+
+    if (!value.suggestionsUserPrompt.includes(promptTemplateTokens.sections)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["suggestionsUserPrompt"],
+        message: `Prompt musi zawierać placeholder ${promptTemplateTokens.sections}.`,
+      });
+    }
+  });
 
 export function formDataToObject(formData: FormData) {
   return Object.fromEntries(

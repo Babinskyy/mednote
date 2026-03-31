@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
 import { appendToRawNote, generateVisitDocument } from "@/lib/document-generation";
-import { getAbbreviationsForUser, getCurrentDocumentForUser } from "@/lib/data";
+import { getAbbreviationsForUser, getCurrentDocumentForUser, getPromptTemplatesForUser } from "@/lib/data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
 import { appendNoteSchema, formDataToObject, deleteByIdSchema, noteSchema } from "@/lib/validation";
@@ -33,8 +33,11 @@ export async function generateDocumentAction(
     };
   }
 
-  const abbreviations = await getAbbreviationsForUser(user.id);
-  const payload = await generateVisitDocument(parsed.data.note, abbreviations);
+  const [abbreviations, promptTemplates] = await Promise.all([
+    getAbbreviationsForUser(user.id),
+    getPromptTemplatesForUser(user.id),
+  ]);
+  const payload = await generateVisitDocument(parsed.data.note, abbreviations, promptTemplates);
 
   const { error: deleteError } = await supabase.from("medical_documents").delete().eq("user_id", user.id);
 
@@ -101,9 +104,12 @@ export async function appendToDocumentAction(
     };
   }
 
-  const abbreviations = await getAbbreviationsForUser(user.id);
+  const [abbreviations, promptTemplates] = await Promise.all([
+    getAbbreviationsForUser(user.id),
+    getPromptTemplatesForUser(user.id),
+  ]);
   const combinedNote = appendToRawNote(currentDocument.raw_note, parsed.data.note);
-  const payload = await generateVisitDocument(combinedNote, abbreviations);
+  const payload = await generateVisitDocument(combinedNote, abbreviations, promptTemplates);
 
   const { error } = await supabase
     .from("medical_documents")

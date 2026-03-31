@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { abbreviationSchema, loginSchema } from "@/lib/validation";
+import { defaultUserPromptTemplates } from "@/lib/prompt-templates";
+import { abbreviationSchema, loginSchema, userPromptTemplatesSchema } from "@/lib/validation";
 
 describe("validation schemas", () => {
   it("accepts shortcuts with spaces", () => {
@@ -19,5 +20,20 @@ describe("validation schemas", () => {
     });
 
     expect(parsed.success).toBe(true);
+  });
+
+  it("accepts the default prompt templates", () => {
+    const parsed = userPromptTemplatesSchema.safeParse(defaultUserPromptTemplates);
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects prompt templates without required placeholders", () => {
+    const parsed = userPromptTemplatesSchema.safeParse({
+      ...defaultUserPromptTemplates,
+      sectionsUserPrompt: "Brakuje placeholderów.",
+    });
+
+    expect(parsed.success).toBe(false);
   });
 });

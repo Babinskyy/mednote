@@ -41,6 +41,7 @@ To utworzy:
 
 - tabelę `abbreviations` z prywatnym słownikiem skrótów per użytkownik,
 - tabelę `medical_documents` przechowującą tylko bieżący dokument użytkownika,
+- tabelę `user_prompt_preferences` z promptami AI zapisywanymi per konto lekarza,
 - polityki RLS ograniczające dostęp do własnych danych.
 
 Ważne ograniczenie MVP:

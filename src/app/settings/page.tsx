@@ -2,11 +2,12 @@ import Link from "next/link";
 
 import { deleteAbbreviationAction } from "@/app/actions/abbreviations";
 import { AddAbbreviationForm } from "@/components/forms/add-abbreviation-form";
+import { PromptSettingsForm } from "@/components/forms/prompt-settings-form";
 import { SetupCard } from "@/components/dashboard/setup-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
-import { getAbbreviationsForUser } from "@/lib/data";
+import { getAbbreviationsForUser, getPromptTemplatesForUser } from "@/lib/data";
 import { hasSupabaseConfig } from "@/lib/env";
 
 export default async function SettingsPage() {
@@ -15,7 +16,10 @@ export default async function SettingsPage() {
   }
 
   const user = await requireUser();
-  const abbreviations = await getAbbreviationsForUser(user.id);
+  const [abbreviations, promptTemplates] = await Promise.all([
+    getAbbreviationsForUser(user.id),
+    getPromptTemplatesForUser(user.id),
+  ]);
 
   return (
     <main className="flex-1 px-6 py-6 md:px-8 md:py-8">
@@ -23,10 +27,13 @@ export default async function SettingsPage() {
         <Card className="animate-rise-in space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-3">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Ustawienia</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+                Ustawienia
+              </p>
               <CardTitle>Prywatny słownik skrótów</CardTitle>
               <CardDescription className="max-w-3xl text-base leading-7">
-                Wpisy z tego słownika działają globalnie w całej notatce jako dokładne zamiany 1:1 i są case-sensitive.
+                Wpisy z tego słownika działają globalnie w całej notatce jako
+                dokładne zamiany 1:1 i są case-sensitive.
               </CardDescription>
             </div>
             <Link href="/">
@@ -39,7 +46,9 @@ export default async function SettingsPage() {
 
         <Card className="animate-rise-in space-y-5">
           <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Lista skrótów</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Lista skrótów
+            </p>
             <CardTitle>Aktywne wpisy</CardTitle>
           </div>
 
@@ -56,9 +65,16 @@ export default async function SettingsPage() {
               </div>
               <div className="divide-y divide-border bg-white/70">
                 {abbreviations.map((abbreviation) => (
-                  <div className="grid grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)_auto] items-center gap-3 px-5 py-4" key={abbreviation.id}>
-                    <span className="font-mono text-sm font-semibold text-foreground">{abbreviation.shortcut}</span>
-                    <span className="text-sm leading-7 text-foreground">{abbreviation.expansion}</span>
+                  <div
+                    className="grid grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)_auto] items-center gap-3 px-5 py-4"
+                    key={abbreviation.id}
+                  >
+                    <span className="font-mono text-sm font-semibold text-foreground">
+                      {abbreviation.shortcut}
+                    </span>
+                    <span className="text-sm leading-7 text-foreground">
+                      {abbreviation.expansion}
+                    </span>
                     <form action={deleteAbbreviationAction}>
                       <input name="id" type="hidden" value={abbreviation.id} />
                       <Button size="sm" type="submit" variant="ghost">
@@ -70,6 +86,20 @@ export default async function SettingsPage() {
               </div>
             </div>
           )}
+        </Card>
+        <Card className="animate-rise-in space-y-5">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Prompty AI
+            </p>
+            <CardTitle>Personalizacja generowania</CardTitle>
+            <CardDescription className="max-w-3xl text-base leading-7">
+              Domyślnie widzisz aktualne prompty aplikacji. Możesz je zmienić i
+              zapisać osobno dla swojego konta lekarza.
+            </CardDescription>
+          </div>
+
+          <PromptSettingsForm initialValues={promptTemplates} />
         </Card>
       </div>
     </main>

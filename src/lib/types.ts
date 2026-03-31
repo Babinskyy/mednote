@@ -14,6 +14,13 @@ export type GeneratedDocumentPayload = {
   suggestions: string[];
 };
 
+export type UserPromptTemplates = {
+  sectionsSystemPrompt: string;
+  sectionsUserPrompt: string;
+  suggestionsSystemPrompt: string;
+  suggestionsUserPrompt: string;
+};
+
 export type AbbreviationRecord = {
   id: string;
   shortcut: string;
