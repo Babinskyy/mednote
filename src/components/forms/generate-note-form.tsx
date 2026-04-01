@@ -95,7 +95,7 @@ export function GenerateNoteForm({
           </p>
         ) : null}
 
-        {isAppendMode ? <input name="id" type="hidden" value={currentDocument.id} /> : null}
+        {currentDocument ? <input name="id" type="hidden" value={currentDocument.id} /> : null}
 
         <div className="flex flex-col gap-2">
           <label className="text-sm font-semibold text-foreground" htmlFor="note">

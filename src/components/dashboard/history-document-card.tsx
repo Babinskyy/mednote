@@ -68,7 +68,12 @@ export function HistoryDocumentCard({
       role="button"
       tabIndex={0}
     >
-      <form action={selectAction} className="hidden" onSubmit={handleSelectSubmit} ref={selectFormRef}>
+      <form
+        action={selectAction}
+        className="hidden"
+        onSubmit={handleSelectSubmit}
+        ref={selectFormRef}
+      >
         <input name="id" type="hidden" value={documentId} />
       </form>
 
@@ -79,9 +84,7 @@ export function HistoryDocumentCard({
               {createdAtLabel}
             </p>
             {isActive ? (
-              <Badge className="bg-[#0f766e]/15 text-[#0f766e]">
-                Aktywna
-              </Badge>
+              <Badge className="bg-[#0f766e]/15 text-[#0f766e]">Aktywna</Badge>
             ) : null}
           </div>
           <p className="text-sm leading-6 text-foreground">
@@ -93,7 +96,11 @@ export function HistoryDocumentCard({
           <p className="text-xs uppercase tracking-[0.16em] text-muted">
             Sugestie: {suggestionsCount}
           </p>
-          <form action={deleteAction} onClick={(event) => event.stopPropagation()} onSubmit={handleDeleteSubmit}>
+          <form
+            action={deleteAction}
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={handleDeleteSubmit}
+          >
             <input name="id" type="hidden" value={documentId} />
             <SubmitButton
               pendingLabel="Usuwanie..."
