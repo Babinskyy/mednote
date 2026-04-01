@@ -4,6 +4,12 @@ import { z } from "zod";
 
 import { expandAbbreviations } from "@/lib/abbreviations";
 import { getOpenAIConfig } from "@/lib/env";
+import {
+  replacePeselsWithTokens,
+  restorePeselsInSections,
+  restorePeselsInStringList,
+  restorePeselsInText,
+} from "@/lib/pesel";
 import { defaultUserPromptTemplates, promptTemplateTokens, renderPromptTemplate } from "@/lib/prompt-templates";
 import type {
   AbbreviationRecord,
@@ -97,6 +103,13 @@ const familyHistoryKeywords = [
 ];
 
 const prescriptionCodeKeywords = ["kod recept", "erecept", "e-recept", "recepta", "rp:"];
+
+const peselPlaceholderInstruction = [
+  "W notatce mogą pojawić się techniczne placeholdery PESEL w formacie __PESEL_n__.",
+  "Nie analizuj ich jako danych klinicznych.",
+  "Jeżeli placeholder występuje w źródle, zachowaj go 1:1 w expandedNote i w odpowiedniej sekcji dokumentu.",
+  "Nie zmieniaj, nie usuwaj i nie normalizuj placeholderów.",
+].join(" ");
 
 let openAiClient: OpenAI | null = null;
 
@@ -301,6 +314,7 @@ async function generateSectionsWithOpenAi(
   note: string,
   abbreviations: Pick<AbbreviationRecord, "shortcut" | "expansion">[],
   promptTemplates: UserPromptTemplates,
+  preservePeselPlaceholders: boolean,
 ) {
   const context = getOpenAiClient();
 
@@ -314,7 +328,9 @@ async function generateSectionsWithOpenAi(
     messages: [
       {
         role: "system",
-        content: promptTemplates.sectionsSystemPrompt,
+        content: preservePeselPlaceholders
+          ? `${promptTemplates.sectionsSystemPrompt}\n\n${peselPlaceholderInstruction}`
+          : promptTemplates.sectionsSystemPrompt,
       },
       {
         role: "user",
@@ -366,21 +382,30 @@ export async function generateVisitDocument(
   abbreviations: Pick<AbbreviationRecord, "shortcut" | "expansion">[],
   promptTemplates: UserPromptTemplates = defaultUserPromptTemplates,
 ): Promise<GeneratedDocumentPayload & { expandedNote: string }> {
-  const fallbackExpandedNote = expandAbbreviations(rawNote, abbreviations);
+  const { text: sanitizedRawNote, pesels } = replacePeselsWithTokens(rawNote);
+  const fallbackExpandedNote = expandAbbreviations(sanitizedRawNote, abbreviations);
 
   try {
-    const aiDocument = await generateSectionsWithOpenAi(rawNote, abbreviations, promptTemplates);
+    const aiDocument = await generateSectionsWithOpenAi(
+      sanitizedRawNote,
+      abbreviations,
+      promptTemplates,
+      pesels.length > 0,
+    );
 
     if (aiDocument) {
-      const expandedNote = aiDocument.expandedNote.trim() || fallbackExpandedNote;
+      const tokenizedExpandedNote = aiDocument.expandedNote.trim() || fallbackExpandedNote;
       const suggestions =
         (await generateSuggestionsWithOpenAi(aiDocument.sections, promptTemplates).catch(() => null)) ??
-        buildSuggestions(expandedNote, aiDocument.sections);
+        buildSuggestions(tokenizedExpandedNote, aiDocument.sections);
+
+      const expandedNote = restorePeselsInText(tokenizedExpandedNote, pesels);
+      const sections = restorePeselsInSections(aiDocument.sections, pesels);
 
       return {
         ...generatedDocumentSchema.parse({
-          sections: aiDocument.sections,
-          suggestions,
+          sections,
+          suggestions: restorePeselsInStringList(suggestions, pesels),
         }),
         expandedNote,
       };
@@ -389,8 +414,13 @@ export async function generateVisitDocument(
     // Fall back to deterministic formatting when the provider is unavailable.
   }
 
+  const heuristicDocument = generateHeuristicDocument(fallbackExpandedNote);
+
   return {
-    ...generateHeuristicDocument(fallbackExpandedNote),
-    expandedNote: fallbackExpandedNote,
+    ...generatedDocumentSchema.parse({
+      sections: restorePeselsInSections(heuristicDocument.sections, pesels),
+      suggestions: restorePeselsInStringList(heuristicDocument.suggestions, pesels),
+    }),
+    expandedNote: restorePeselsInText(fallbackExpandedNote, pesels),
   };
 }

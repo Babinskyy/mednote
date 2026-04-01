@@ -1,119 +1,81 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useActionState, useEffect } from "react";
 
 import {
   appendToDocumentAction,
-  deleteDocumentAction,
   generateDocumentAction,
 } from "@/app/actions/documents";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form-message";
+import { MaskedPeselText } from "@/components/ui/masked-pesel-text";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
 import { initialActionState, type DocumentRecord } from "@/lib/types";
 
+const historyDateFormatter = new Intl.DateTimeFormat("pl-PL", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatHistoryTimestamp(value: string) {
+  return historyDateFormatter.format(new Date(value));
+}
+
 type GenerateNoteFormProps = {
   abbreviationCount: number;
   aiEnabled: boolean;
-  currentDocument: Pick<DocumentRecord, "id"> | null;
+  currentDocument: Pick<DocumentRecord, "id" | "conversation_history"> | null;
+  scrollTargetId?: string;
 };
 
 export function GenerateNoteForm({
   abbreviationCount,
   aiEnabled,
   currentDocument,
+  scrollTargetId,
 }: GenerateNoteFormProps) {
-  const isAppendMode = Boolean(currentDocument);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [state, action] = useActionState(
-    isAppendMode ? appendToDocumentAction : generateDocumentAction,
+  const [createState, createAction] = useActionState(
+    generateDocumentAction,
     initialActionState,
   );
-  const canUseDOM = typeof window !== "undefined";
+  const [appendState, appendAction] = useActionState(
+    appendToDocumentAction,
+    initialActionState,
+  );
+  const isAppendMode = Boolean(currentDocument);
+  const state = isAppendMode ? appendState : createState;
+  const action = isAppendMode ? appendAction : createAction;
+  const primaryMessage = currentDocument?.conversation_history[0] ?? null;
+  const appendedMessages = currentDocument?.conversation_history.slice(1) ?? [];
 
   useEffect(() => {
-    if (!isConfirmOpen) {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsConfirmOpen(false);
-      }
-    };
+    const targetId = scrollTargetId ?? "generate-note-section";
+    const expectedHash = `#${targetId}`;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
+    if (window.location.hash !== expectedHash) {
+      return;
+    }
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isConfirmOpen]);
+    const target = document.getElementById(targetId);
 
-  const confirmDialog =
-    currentDocument && isConfirmOpen && canUseDOM
-      ? createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 sm:px-6">
-            <button
-              aria-label="Zamknij potwierdzenie"
-              className="fixed inset-0 bg-[#11232b]/55"
-              onClick={() => setIsConfirmOpen(false)}
-              type="button"
-            />
+    if (!target) {
+      return;
+    }
 
-            <div
-              aria-describedby="new-note-confirmation-description"
-              aria-labelledby="new-note-confirmation-title"
-              aria-modal="true"
-              className="relative z-10 w-full max-w-md overflow-y-auto rounded-[28px] border border-border bg-[#f8f5ef] p-6 shadow-2xl max-h-[calc(100dvh-3rem)]"
-              role="dialog"
-            >
-              <p
-                className="text-xs font-semibold uppercase tracking-[0.16em] text-accent"
-                id="new-note-confirmation-title"
-              >
-                Potwierdzenie
-              </p>
-              <h3 className="mt-3 font-serif text-2xl leading-tight text-foreground">
-                Usunąć bieżącą notatkę?
-              </h3>
-              <p
-                className="mt-3 text-sm leading-7 text-muted"
-                id="new-note-confirmation-description"
-              >
-                Po potwierdzeniu aktywny dokument zostanie usunięty, a widok wróci do
-                formularza tworzenia nowej notatki.
-              </p>
-
-              <form action={deleteDocumentAction} className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <input name="id" type="hidden" value={currentDocument.id} />
-                <Button
-                  className="flex-1 justify-center"
-                  onClick={() => setIsConfirmOpen(false)}
-                  type="button"
-                  variant="ghost"
-                >
-                  Anuluj
-                </Button>
-                <SubmitButton
-                  className="flex-1 justify-center"
-                  pendingLabel="Usuwanie..."
-                  type="submit"
-                  variant="danger"
-                >
-                  Usuń i zacznij nową
-                </SubmitButton>
-              </form>
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
+    });
+  }, [currentDocument?.id, scrollTargetId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -133,7 +95,7 @@ export function GenerateNoteForm({
           </p>
         ) : null}
 
-        {currentDocument ? <input name="id" type="hidden" value={currentDocument.id} /> : null}
+        {isAppendMode ? <input name="id" type="hidden" value={currentDocument.id} /> : null}
 
         <div className="flex flex-col gap-2">
           <label className="text-sm font-semibold text-foreground" htmlFor="note">
@@ -165,19 +127,64 @@ export function GenerateNoteForm({
         </SubmitButton>
       </form>
 
-      {currentDocument ? (
-        <>
-          <Button
-            className="w-full justify-center"
-            onClick={() => setIsConfirmOpen(true)}
-            size="lg"
-            type="button"
-            variant="secondary"
-          >
-            Nowa notatka
-          </Button>
-          {confirmDialog}
-        </>
+      {currentDocument && primaryMessage ? (
+        <section className="rounded-[28px] border border-border bg-white/70 p-5">
+          <div className="space-y-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+              Historia twoich notatek
+            </p>
+            <p className="text-sm leading-6 text-muted">
+              Zachowujemy pierwszą wiadomość oraz każde kolejne dopisanie do bieżącej notatki.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-4">
+            <div className="rounded-3xl border border-border bg-white/80 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                  Główna wiadomość
+                </p>
+                <p className="text-xs text-muted">
+                  {formatHistoryTimestamp(primaryMessage.created_at)}
+                </p>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground">
+                <MaskedPeselText text={primaryMessage.content} />
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                Dopisane nowe informacje
+              </p>
+
+              {appendedMessages.length ? (
+                appendedMessages.map((message, index) => (
+                  <div
+                    className="rounded-3xl border border-border bg-white/80 p-4"
+                    key={`${message.created_at}-${index}`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                        Dopisanie {index + 1}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {formatHistoryTimestamp(message.created_at)}
+                      </p>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground">
+                      <MaskedPeselText text={message.content} />
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-3xl border border-dashed border-border bg-white/60 px-4 py-3 text-sm leading-6 text-muted">
+                  Brak dopisanych informacji do tej notatki.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       ) : null}
     </div>
   );
