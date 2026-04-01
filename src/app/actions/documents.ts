@@ -5,9 +5,32 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { appendToRawNote, generateVisitDocument } from "@/lib/document-generation";
 import { getAbbreviationsForUser, getCurrentDocumentForUser, getPromptTemplatesForUser } from "@/lib/data";
+import { appendConversationHistory, buildInitialConversationHistory } from "@/lib/note-history";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
 import { appendNoteSchema, formDataToObject, deleteByIdSchema, noteSchema } from "@/lib/validation";
+
+async function setActiveDocumentForUser(
+  userId: string,
+  documentId: string | null,
+) {
+  const supabase = await getSupabaseServerClient();
+
+  if (!supabase) {
+    return { error: new Error("missing-supabase") };
+  }
+
+  const result = await supabase.from("user_active_documents").upsert(
+    {
+      user_id: userId,
+      active_document_id: documentId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  return { error: result.error };
+}
 
 export async function generateDocumentAction(
   _previousState: ActionState,
@@ -38,28 +61,37 @@ export async function generateDocumentAction(
     getPromptTemplatesForUser(user.id),
   ]);
   const payload = await generateVisitDocument(parsed.data.note, abbreviations, promptTemplates);
+  const conversationTimestamp = new Date().toISOString();
 
-  const { error: deleteError } = await supabase.from("medical_documents").delete().eq("user_id", user.id);
+  const { data: createdDocument, error } = await supabase
+    .from("medical_documents")
+    .insert({
+      user_id: user.id,
+      raw_note: parsed.data.note,
+      expanded_note: payload.expandedNote,
+      conversation_history: buildInitialConversationHistory(
+        parsed.data.note,
+        conversationTimestamp,
+      ),
+      sections: payload.sections,
+      suggestions: payload.suggestions,
+    })
+    .select("id")
+    .single();
 
-  if (deleteError) {
-    return {
-      status: "error",
-      message: "Nie udało się usunąć poprzedniego dokumentu.",
-    };
-  }
-
-  const { error } = await supabase.from("medical_documents").insert({
-    user_id: user.id,
-    raw_note: parsed.data.note,
-    expanded_note: payload.expandedNote,
-    sections: payload.sections,
-    suggestions: payload.suggestions,
-  });
-
-  if (error) {
+  if (error || !createdDocument) {
     return {
       status: "error",
       message: "Nie udało się zapisać wygenerowanego dokumentu.",
+    };
+  }
+
+  const activeDocumentUpdate = await setActiveDocumentForUser(user.id, createdDocument.id);
+
+  if (activeDocumentUpdate.error) {
+    return {
+      status: "error",
+      message: "Dokument zapisano, ale nie udało się ustawić go jako aktywnego.",
     };
   }
 
@@ -67,7 +99,7 @@ export async function generateDocumentAction(
 
   return {
     status: "success",
-    message: "Dokument został wygenerowany.",
+    message: "Dokument został wygenerowany i dodany do historii.",
   };
 }
 
@@ -109,6 +141,11 @@ export async function appendToDocumentAction(
     getPromptTemplatesForUser(user.id),
   ]);
   const combinedNote = appendToRawNote(currentDocument.raw_note, parsed.data.note);
+  const updatedConversationHistory = appendConversationHistory(
+    currentDocument.conversation_history,
+    parsed.data.note,
+    new Date().toISOString(),
+  );
   const payload = await generateVisitDocument(combinedNote, abbreviations, promptTemplates);
 
   const { error } = await supabase
@@ -116,6 +153,7 @@ export async function appendToDocumentAction(
     .update({
       raw_note: combinedNote,
       expanded_note: payload.expandedNote,
+      conversation_history: updatedConversationHistory,
       sections: payload.sections,
       suggestions: payload.suggestions,
     })
@@ -151,7 +189,62 @@ export async function deleteDocumentAction(formData: FormData) {
     return;
   }
 
+  const currentDocument = await getCurrentDocumentForUser(user.id);
+
   await supabase.from("medical_documents").delete().eq("id", parsed.data.id).eq("user_id", user.id);
+
+  if (currentDocument?.id === parsed.data.id) {
+    await setActiveDocumentForUser(user.id, null);
+  }
+
+  revalidatePath("/");
+}
+
+export async function setActiveDocumentAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = deleteByIdSchema.safeParse({ id: formData.get("id") });
+
+  if (!parsed.success) {
+    return;
+  }
+
+  const supabase = await getSupabaseServerClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { data: document } = await supabase
+    .from("medical_documents")
+    .select("id")
+    .eq("id", parsed.data.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!document) {
+    return;
+  }
+
+  await supabase.from("user_active_documents").upsert(
+    {
+      user_id: user.id,
+      active_document_id: document.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  revalidatePath("/");
+}
+
+export async function clearActiveDocumentAction() {
+  const user = await requireUser();
+
+  const activeDocumentUpdate = await setActiveDocumentForUser(user.id, null);
+
+  if (activeDocumentUpdate.error) {
+    return;
+  }
 
   revalidatePath("/");
 }

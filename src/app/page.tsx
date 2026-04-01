@@ -1,12 +1,19 @@
 import Link from "next/link";
 
+import {
+  clearActiveDocumentAction,
+  deleteDocumentAction,
+  setActiveDocumentAction,
+} from "@/app/actions/documents";
 import { logoutAction } from "@/app/actions/auth";
 import { CopyDocumentButton } from "@/components/dashboard/copy-document-button";
+import { HistoryDocumentCard } from "@/components/dashboard/history-document-card";
 import { SetupCard } from "@/components/dashboard/setup-card";
 import { GenerateNoteForm } from "@/components/forms/generate-note-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { MaskedPeselText } from "@/components/ui/masked-pesel-text";
 import {
   formatDocumentForClipboard,
   formatSectionValue,
@@ -14,6 +21,7 @@ import {
 import {
   getAbbreviationsForUser,
   getCurrentDocumentForUser,
+  getDocumentHistoryForUser,
   getUserDisplayName,
 } from "@/lib/data";
 import { hasOpenAIConfig, hasSupabaseConfig } from "@/lib/env";
@@ -30,19 +38,29 @@ const sectionLabels = {
   prescriptionCode: "Kod recepty",
 } as const;
 
+const historyDateFormatter = new Intl.DateTimeFormat("pl-PL", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatHistoryTimestamp(value: string) {
+  return historyDateFormatter.format(new Date(value));
+}
+
 export default async function Home() {
   if (!hasSupabaseConfig()) {
     return <SetupCard />;
   }
 
   const user = await requireUser();
-  const [abbreviations, document] = await Promise.all([
+  const [abbreviations, documents, currentDocument] = await Promise.all([
     getAbbreviationsForUser(user.id),
+    getDocumentHistoryForUser(user.id),
     getCurrentDocumentForUser(user.id),
   ]);
 
-  const clipboardText = document
-    ? formatDocumentForClipboard(document.sections)
+  const clipboardText = currentDocument
+    ? formatDocumentForClipboard(currentDocument.sections)
     : "";
 
   return (
@@ -93,10 +111,10 @@ export default async function Home() {
                 </div>
                 <div className="rounded-3xl bg-white/8 p-4">
                   <p className="text-xs uppercase tracking-[0.16em]">
-                    Dokument
+                    Historia
                   </p>
                   <p className="mt-2 text-2xl font-semibold">
-                    {document ? "1" : "0"}
+                    {documents.length}/10
                   </p>
                 </div>
               </div>
@@ -117,29 +135,56 @@ export default async function Home() {
           </div>
         </Card>
 
+        {currentDocument ? (
+          <Card className="animate-rise-in border border-accent/25 bg-[linear-gradient(135deg,rgba(15,118,110,0.14),rgba(255,255,255,0.92))] p-6 md:p-7">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl space-y-2">
+                <CardTitle>Rozpocznij nową notatkę</CardTitle>
+                <CardDescription className="text-base leading-7">
+                  Aktywna notatka zostanie zapisana w historii.
+                </CardDescription>
+              </div>
+
+              <form action={clearActiveDocumentAction} className="w-full md:w-auto">
+                <Button className="h-14 w-full px-8 text-base md:min-w-64" size="lg" type="submit">
+                  Nowa notatka
+                </Button>
+              </form>
+            </div>
+          </Card>
+        ) : null}
+
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <Card className="animate-rise-in space-y-5">
+          <Card
+            className="animate-rise-in space-y-5"
+            id="generate-note-section"
+          >
             <div className="space-y-3">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
                 Generacja
               </p>
               <CardTitle>
-                {document ? "Uzupełnij bieżącą notatkę" : "Wpisz notatkę z wizyty"}
+                {currentDocument
+                  ? "Uzupełnij bieżącą notatkę"
+                  : "Wpisz notatkę z wizyty"}
               </CardTitle>
               <CardDescription className="text-base leading-7">
-                {document
+                {currentDocument
                   ? "Nowe informacje zostaną dopisane do aktywnej notatki i przeliczone razem z dotychczasową treścią."
                   : "Wynik zawiera sekcje: wywiad, choroby i operacje, alergie, wywiad rodzinny, badanie, rozpoznanie, zalecenia i kod recepty."}
               </CardDescription>
               <p className="rounded-3xl border border-border bg-white/65 px-4 py-3 text-sm leading-6 text-muted">
-                Aplikacja przechowuje tylko ostatnią aktywną notatkę. Można mieć wygenerowaną tylko jedną notatkę naraz, a utworzenie nowej usuwa poprzednią.
+                Aplikacja przechowuje 10 ostatnich wygenerowanych notatek. Po
+                zapisaniu jedenastej najstarszy wpis jest automatycznie usuwany
+                z historii.
               </p>
             </div>
             <GenerateNoteForm
-              key={document?.id ?? "new-document"}
+              key={currentDocument?.id ?? "new-document"}
               abbreviationCount={abbreviations.length}
               aiEnabled={hasOpenAIConfig()}
-              currentDocument={document}
+              currentDocument={currentDocument}
+              scrollTargetId="generate-note-section"
             />
           </Card>
 
@@ -151,13 +196,15 @@ export default async function Home() {
                 </p>
                 <CardTitle>Gotowa karta wizyty</CardTitle>
                 <CardDescription className="max-w-xl text-base leading-7">
-                  Przed użyciem zweryfikuj treść.
+                  Wyświetlamy aktywną notatkę. Przed użyciem zweryfikuj treść.
                 </CardDescription>
               </div>
-              {document ? <CopyDocumentButton content={clipboardText} /> : null}
+              {currentDocument ? (
+                <CopyDocumentButton content={clipboardText} />
+              ) : null}
             </div>
 
-            {!document ? (
+            {!currentDocument ? (
               <div className="rounded-[28px] border border-dashed border-border bg-white/60 px-6 py-10 text-sm leading-7 text-muted">
                 Po wygenerowaniu dokument pojawi się tutaj.
               </div>
@@ -182,20 +229,24 @@ export default async function Home() {
                         {sectionLabels[key]}
                       </p>
                       <p className="document-copy text-sm leading-7 text-foreground">
-                        {formatSectionValue(document.sections[key])}
+                        <MaskedPeselText
+                          text={formatSectionValue(currentDocument.sections[key])}
+                        />
                       </p>
                     </section>
                   ))}
                 </div>
 
-                {document.suggestions.length ? (
+                {currentDocument.suggestions.length ? (
                   <section className="rounded-[28px] border border-[#e7a62b]/25 bg-[#fff7e7] p-5">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#9b6a0e]">
                       Sugestie
                     </p>
                     <ul className="space-y-2 text-sm leading-7 text-foreground">
-                      {document.suggestions.map((suggestion) => (
-                        <li key={suggestion}>• {suggestion}</li>
+                      {currentDocument.suggestions.map((suggestion) => (
+                        <li key={suggestion}>
+                          • <MaskedPeselText text={suggestion} />
+                        </li>
                       ))}
                     </ul>
                   </section>
@@ -204,6 +255,46 @@ export default async function Home() {
             )}
           </Card>
         </div>
+
+        {documents.length ? (
+          <Card className="animate-rise-in space-y-5">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+                Historia notatek
+              </p>
+              <CardTitle>10 ostatnich wpisów</CardTitle>
+              <CardDescription className="max-w-3xl text-base leading-7">
+                Kliknięcie wpisu z historii ustawia go jako aktywną notatkę do
+                dalszego uzupełniania. Historia nadal przechowuje maksymalnie 10
+                ostatnich zapisów.
+              </CardDescription>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              {documents.map((document) => {
+                const isActive = currentDocument?.id === document.id;
+
+                return (
+                  <HistoryDocumentCard
+                    createdAtLabel={formatHistoryTimestamp(document.created_at)}
+                    deleteAction={deleteDocumentAction}
+                    diagnosis={formatSectionValue(document.sections.diagnosis)}
+                    documentId={document.id}
+                    hashTargetId="#generate-note-section"
+                    isActive={isActive}
+                    key={document.id}
+                    rawNote={document.raw_note}
+                    recommendations={formatSectionValue(
+                      document.sections.recommendations,
+                    )}
+                    selectAction={setActiveDocumentAction}
+                    suggestionsCount={document.suggestions.length}
+                  />
+                );
+              })}
+            </div>
+          </Card>
+        ) : null}
       </div>
     </main>
   );

@@ -73,4 +73,17 @@ describe("generateVisitDocument", () => {
     expect(result.sections.familyHistory).toContain("Wywiad rodzinny dodatni w kierunku cukrzycy u matki.");
     expect(result.sections.prescriptionCode).toContain("Kod recepty 1234 5678.");
   });
+
+  it("restores PESEL values after tokenized processing", async () => {
+    const result = await generateVisitDocument(
+      "Pacjent zgłasza kaszel od 3 dni. PESEL 02211312372. Rozpoznanie: infekcja wirusowa. Zalecenia: odpoczynek.",
+      [],
+    );
+
+    expect(result.expandedNote).toContain("02211312372");
+    expect(result.sections.interview).toContain("02211312372");
+    expect(result.sections.diagnosis).toContain("Rozpoznanie: infekcja wirusowa.");
+    expect(result.sections.recommendations).toContain("Zalecenia: odpoczynek.");
+    expect(result.suggestions.join(" ")).not.toContain("__PESEL_");
+  });
 });

@@ -53,6 +53,16 @@ export const generatedDocumentSchema = z.object({
   suggestions: z.array(z.string().trim().min(1)).max(10),
 });
 
+export const documentConversationEntrySchema = z.object({
+  kind: z.enum(["initial", "append"]),
+  content: z.string().trim().min(1),
+  created_at: z.string().trim().min(1),
+});
+
+export const documentConversationHistorySchema = z.array(
+  documentConversationEntrySchema,
+);
+
 const promptTemplateSchema = z
   .string()
   .trim()

@@ -9,6 +9,12 @@ export type VisitSections = {
   prescriptionCode: string;
 };
 
+export type DocumentConversationEntry = {
+  kind: "initial" | "append";
+  content: string;
+  created_at: string;
+};
+
 export type GeneratedDocumentPayload = {
   sections: VisitSections;
   suggestions: string[];
@@ -32,6 +38,7 @@ export type DocumentRecord = {
   id: string;
   raw_note: string;
   expanded_note: string;
+  conversation_history: DocumentConversationEntry[];
   sections: VisitSections;
   suggestions: string[];
   created_at: string;
