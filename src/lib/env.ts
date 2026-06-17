@@ -33,13 +33,13 @@ export function getOpenAIConfig() {
   };
 }
 
-export function getOpenAITranscriptionConfig() {
+export function getOpenAIRealtimeConfig() {
   if (!hasOpenAIConfig()) {
     return null;
   }
 
   return {
     apiKey: process.env.OPENAI_API_KEY!,
-    model: process.env.OPENAI_TRANSCRIPTION_MODEL ?? "gpt-4o-mini-transcribe",
+    model: process.env.OPENAI_REALTIME_TRANSCRIPTION_MODEL ?? "gpt-realtime-whisper",
   };
 }

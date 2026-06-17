@@ -3,21 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
-import { transcribeAudioNote } from "@/lib/audio-transcription";
 import { appendToRawNote, generateVisitDocument } from "@/lib/document-generation";
 import { getAbbreviationsForUser, getCurrentDocumentForUser, getPromptTemplatesForUser } from "@/lib/data";
 import { appendConversationHistory, buildInitialConversationHistory } from "@/lib/note-history";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
 import { appendNoteSchema, formDataToObject, deleteByIdSchema, noteSchema } from "@/lib/validation";
-
-const maxAudioFileSize = 25 * 1024 * 1024;
-
-type TranscribeAudioActionState = {
-  status: "success" | "error";
-  message?: string;
-  transcript?: string;
-};
 
 async function setActiveDocumentForUser(
   userId: string,
@@ -182,49 +173,6 @@ export async function appendToDocumentAction(
     status: "success",
     message: "Dokument został uzupełniony.",
   };
-}
-
-export async function transcribeAudioAction(
-  formData: FormData,
-): Promise<TranscribeAudioActionState> {
-  await requireUser();
-
-  const audio = formData.get("audio");
-
-  if (!(audio instanceof File) || audio.size === 0) {
-    return {
-      status: "error",
-      message: "Nie udało się odczytać nagrania.",
-    };
-  }
-
-  if (audio.size > maxAudioFileSize) {
-    return {
-      status: "error",
-      message: "Nagranie jest za długie. Zatrzymaj dyktowanie wcześniej i spróbuj ponownie.",
-    };
-  }
-
-  try {
-    const transcript = await transcribeAudioNote(audio);
-
-    if (!transcript) {
-      return {
-        status: "error",
-        message: "Brakuje konfiguracji OpenAI do transkrypcji.",
-      };
-    }
-
-    return {
-      status: "success",
-      transcript,
-    };
-  } catch {
-    return {
-      status: "error",
-      message: "Nie udało się przetworzyć nagrania.",
-    };
-  }
 }
 
 export async function deleteDocumentAction(formData: FormData) {
