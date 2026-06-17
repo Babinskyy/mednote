@@ -94,8 +94,22 @@ textarea {
   }
 }
 
+@keyframes recording-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(210%);
+  }
+}
+
 .animate-rise-in {
   animation: rise-in 0.45s ease-out both;
+}
+
+.recording-sweep {
+  animation: recording-sweep 1.35s ease-in-out infinite;
 }
 
 .grid-wash {

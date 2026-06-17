@@ -32,3 +32,14 @@ export function getOpenAIConfig() {
     model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
   };
 }
+
+export function getOpenAITranscriptionConfig() {
+  if (!hasOpenAIConfig()) {
+    return null;
+  }
+
+  return {
+    apiKey: process.env.OPENAI_API_KEY!,
+    model: process.env.OPENAI_TRANSCRIPTION_MODEL ?? "gpt-4o-mini-transcribe",
+  };
+}
